@@ -28,7 +28,7 @@ import com.example.kalorias.data.ActivityType
 import com.example.kalorias.ui.KaloriasViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -45,9 +45,8 @@ fun WalkSessionScreen(
 ) {
     val context = LocalContext.current
 
-    // Configure OsmDroid User Agent
     DisposableEffect(Unit) {
-        Configuration.getInstance().userAgentValue = "KaloriasFitnessApp/1.0 (Android)"
+        Configuration.getInstance().userAgentValue = "com.example.kalorias"
         onDispose { }
     }
 
@@ -83,7 +82,6 @@ fun WalkSessionScreen(
     val userHeight = viewModel.userProfile.heightCm
     val stepLengthMeters = userHeight * 0.00415
 
-    // Real distance and calories calculated ONLY from physical steps detected by hardware
     val distanceKm = remember(realSteps) {
         (realSteps * stepLengthMeters) / 1000.0
     }
@@ -120,7 +118,6 @@ fun WalkSessionScreen(
         }
     }
 
-    // Timer for workout duration ONLY (steps stay 0 if user does not move)
     LaunchedEffect(isRunning) {
         while (isRunning) {
             delay(1000L)
@@ -128,30 +125,16 @@ fun WalkSessionScreen(
         }
     }
 
-    // OpenStreetMap GeoPoints route
     val routeGeoPoints = remember {
         mutableStateOf(mutableListOf(GeoPoint(40.4168, -3.7038)))
     }
 
-    val cartoDbDarkTileSource = remember {
-        XYTileSource(
-            "CartoDB_Dark",
-            0, 19, 256, ".png",
-            arrayOf(
-                "https://a.basemaps.cartocdn.com/dark_all/",
-                "https://b.basemaps.cartocdn.com/dark_all/",
-                "https://c.basemaps.cartocdn.com/dark_all/"
-            )
-        )
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
-        // OpenStreetMap View
         AndroidView(
             factory = { ctx ->
-                Configuration.getInstance().userAgentValue = "KaloriasFitnessApp/1.0 (Android)"
+                Configuration.getInstance().userAgentValue = "com.example.kalorias"
                 MapView(ctx).apply {
-                    setTileSource(cartoDbDarkTileSource)
+                    setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
                     controller.setZoom(17.0)
                     controller.setCenter(GeoPoint(40.4168, -3.7038))
