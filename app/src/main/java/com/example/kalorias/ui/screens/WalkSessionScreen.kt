@@ -28,7 +28,7 @@ import com.example.kalorias.data.ActivityType
 import com.example.kalorias.ui.KaloriasViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -133,13 +133,25 @@ fun WalkSessionScreen(
         mutableStateOf(mutableListOf(GeoPoint(40.4168, -3.7038)))
     }
 
+    val cartoDbDarkTileSource = remember {
+        XYTileSource(
+            "CartoDB_Dark",
+            0, 19, 256, ".png",
+            arrayOf(
+                "https://a.basemaps.cartocdn.com/dark_all/",
+                "https://b.basemaps.cartocdn.com/dark_all/",
+                "https://c.basemaps.cartocdn.com/dark_all/"
+            )
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // OpenStreetMap View
         AndroidView(
             factory = { ctx ->
                 Configuration.getInstance().userAgentValue = "KaloriasFitnessApp/1.0 (Android)"
                 MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
+                    setTileSource(cartoDbDarkTileSource)
                     setMultiTouchControls(true)
                     controller.setZoom(17.0)
                     controller.setCenter(GeoPoint(40.4168, -3.7038))
