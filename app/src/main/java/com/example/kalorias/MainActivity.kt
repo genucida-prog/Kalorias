@@ -116,6 +116,31 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
+                    val bottomNavItems = listOf(
+                        AppDestinations.DASHBOARD to "Dashboard",
+                        AppDestinations.WALK to "Actividad",
+                        AppDestinations.NUTRITION to "Nutrición"
+                    )
+                    bottomNavItems.forEach { (destination, shortLabel) ->
+                        NavigationBarItem(
+                            icon = { Icon(destination.icon, contentDescription = shortLabel) },
+                            label = { Text(shortLabel, fontWeight = FontWeight.Bold) },
+                            selected = destination == currentDestination,
+                            onClick = { currentDestination = destination },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                }
             }
         ) { innerPadding ->
             Box(

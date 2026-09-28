@@ -169,15 +169,43 @@ fun NutritionScreen(viewModel: KaloriasViewModel) {
         }
 
         items(viewModel.weeklyMealPlan) { dayPlan ->
+            val parts = dayPlan.split(":")
+            val dayName = parts.getOrNull(0) ?: "Día"
+            val mealsContent = parts.getOrNull(1) ?: ""
+            val mealsList = mealsContent.split("•")
+
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = dayPlan,
+                Column(
                     modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = dayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                    mealsList.forEach { meal ->
+                        Text(
+                            text = meal.trim(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Text(
+                        text = "Total $dayName: ~1350 kcal",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         }
     }
