@@ -59,7 +59,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

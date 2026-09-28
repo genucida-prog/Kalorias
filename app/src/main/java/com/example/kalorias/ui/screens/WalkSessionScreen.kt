@@ -1,9 +1,13 @@
 package com.example.kalorias.ui.screens
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.os.Bundle
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -20,18 +24,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.MapView
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapStyleOptions
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.PolylineOptions
 import com.example.kalorias.data.ActivityType
 import com.example.kalorias.ui.KaloriasViewModel
 import kotlinx.coroutines.delay
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.Locale
 
 @Composable
@@ -41,7 +44,12 @@ fun WalkSessionScreen(
     onFinishSession: () -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Configure OsmDroid User Agent
+    DisposableEffect(Unit) {
+        Configuration.getInstance().userAgentValue = "KaloriasFitnessApp/1.0 (Android)"
+        onDispose { }
+    }
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -70,107 +78,100 @@ fun WalkSessionScreen(
 
     var isRunning by remember { mutableStateOf(true) }
     var secondsElapsed by remember { mutableIntStateOf(0) }
-    var distanceKm by remember { mutableDoubleStateOf(0.0) }
+    var realSteps by remember { mutableIntStateOf(0) }
 
     val userHeight = viewModel.userProfile.heightCm
     val stepLengthMeters = userHeight * 0.00415
 
-    val currentSteps = remember(distanceKm, userHeight) {
-        if (distanceKm > 0) ((distanceKm * 1000) / stepLengthMeters).toInt() else 0
+    // Real distance and calories calculated ONLY from physical steps detected by hardware
+    val distanceKm = remember(realSteps) {
+        (realSteps * stepLengthMeters) / 1000.0
     }
 
     val caloriesBurned = remember(distanceKm) {
         (distanceKm * activityType.calorieMultiplier).toInt()
     }
 
-    val mapView = remember {
-        MapView(context).apply {
-            onCreate(Bundle())
-        }
+    // Hardware Step Sensor listener
+    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    val stepDetector = remember {
+        sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+            ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
     }
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_STOP -> mapView.onStop()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
-                else -> {}
+    DisposableEffect(isRunning) {
+        if (!isRunning) return@DisposableEffect onDispose {}
+
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent?) {
+                if (event != null && isRunning) {
+                    realSteps++
+                }
             }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
+
+        if (stepDetector != null) {
+            sensorManager.registerListener(listener, stepDetector, SensorManager.SENSOR_DELAY_FASTEST)
+        }
+
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            try {
-                mapView.onDestroy()
-            } catch (_: Exception) {}
+            sensorManager.unregisterListener(listener)
         }
     }
 
-    // Route points for Google Maps Polyline
-    val routePoints = remember { mutableStateOf(mutableListOf(LatLng(40.4168, -3.7038), LatLng(40.4178, -3.7048))) }
-
-    val darkMapStyle = """
-        [
-          {"elementType":"geometry","stylers":[{"color":"#121826"}]},
-          {"elementType":"labels.text.fill","stylers":[{"color":"#8ec3b9"}]},
-          {"elementType":"labels.text.stroke","stylers":[{"color":"#1a3646"}]},
-          {"featureType":"road","elementType":"geometry","stylers":[{"color":"#1e293b"}]},
-          {"featureType":"water","elementType":"geometry","stylers":[{"color":"#0b0f19"}]}
-        ]
-    """.trimIndent()
-
-    // Timer and live movement simulation
+    // Timer for workout duration ONLY (steps stay 0 if user does not move)
     LaunchedEffect(isRunning) {
-        var currentLat = 40.4168
-        var currentLng = -3.7038
         while (isRunning) {
             delay(1000L)
             secondsElapsed++
-            distanceKm += 0.0012
-
-            currentLat += 0.0001
-            currentLng += 0.0001
-            routePoints.value.add(LatLng(currentLat, currentLng))
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Google Maps MapView View
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize()
-        ) { view ->
-            view.getMapAsync { googleMap ->
-                try {
-                    googleMap.setMapStyle(MapStyleOptions(darkMapStyle))
-                    googleMap.uiSettings.isZoomControlsEnabled = true
-                    if (hasLocationPermission) {
-                        try {
-                            googleMap.isMyLocationEnabled = true
-                        } catch (_: Exception) {}
-                    }
-                    val points = routePoints.value
-                    if (points.isNotEmpty()) {
-                        googleMap.clear()
-                        val polylineOptions = PolylineOptions()
-                            .addAll(points)
-                            .color(Color.parseColor("#00E5FF")) // Neon Cyan
-                            .width(10f)
-                        googleMap.addPolyline(polylineOptions)
+    // OpenStreetMap GeoPoints route
+    val routeGeoPoints = remember {
+        mutableStateOf(mutableListOf(GeoPoint(40.4168, -3.7038)))
+    }
 
-                        val lastPoint = points.last()
-                        googleMap.addMarker(
-                            MarkerOptions()
-                                .position(lastPoint)
-                                .title("🚶‍♂️ Estás aquí (${activityType.label})")
-                        )
-                        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastPoint, 16f))
+    Box(modifier = Modifier.fillMaxSize()) {
+        // OpenStreetMap View
+        AndroidView(
+            factory = { ctx ->
+                Configuration.getInstance().userAgentValue = "KaloriasFitnessApp/1.0 (Android)"
+                MapView(ctx).apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(17.0)
+                    controller.setCenter(GeoPoint(40.4168, -3.7038))
+
+                    val myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
+                    myLocationOverlay.enableMyLocation()
+                    overlays.add(myLocationOverlay)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        ) { mapView ->
+            try {
+                val points = routeGeoPoints.value
+                if (points.isNotEmpty()) {
+                    mapView.overlays.removeAll { it is Polyline || (it is Marker && it !is MyLocationNewOverlay) }
+                    val polyline = Polyline().apply {
+                        setPoints(points)
+                        outlinePaint.color = Color.parseColor("#00E5FF")
+                        outlinePaint.strokeWidth = 10f
                     }
-                } catch (_: Exception) {}
-            }
+                    mapView.overlays.add(polyline)
+
+                    val lastPoint = points.last()
+                    val marker = Marker(mapView).apply {
+                        position = lastPoint
+                        title = "Estás aquí (${activityType.label})"
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    }
+                    mapView.overlays.add(marker)
+                    mapView.invalidate()
+                }
+            } catch (_: Exception) {}
         }
 
         // Futuristic Workout HUD Overlay
@@ -191,7 +192,7 @@ fun WalkSessionScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "${activityType.icon} GOOGLE MAPS: ${activityType.label.uppercase()}",
+                        text = "${activityType.icon} OPENSTREETMAP: ${activityType.label.uppercase()}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -229,8 +230,8 @@ fun WalkSessionScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "PASOS", style = MaterialTheme.typography.labelSmall)
-                            Text(text = currentSteps.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(text = "PASOS REALES", style = MaterialTheme.typography.labelSmall)
+                            Text(text = realSteps.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(text = "CALORÍAS", style = MaterialTheme.typography.labelSmall)
@@ -268,7 +269,7 @@ fun WalkSessionScreen(
                             val durationMins = (secondsElapsed / 60).coerceAtLeast(1)
                             viewModel.addWalkRecord(
                                 distanceKm = String.format(Locale.getDefault(), "%.2f", distanceKm).toDouble(),
-                                inputSteps = currentSteps,
+                                inputSteps = realSteps,
                                 durationMinutes = durationMins,
                                 activityName = activityType.label
                             )
