@@ -1,6 +1,8 @@
 package com.example.kalorias.ui.screens
 
+import android.graphics.BitmapFactory
 import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,11 +15,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.kalorias.data.ActivityType
 import com.example.kalorias.ui.KaloriasViewModel
+import java.io.File
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -216,51 +222,76 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = activityObj.icon, style = MaterialTheme.typography.headlineSmall)
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "${walk.activityName} • ${walk.distanceKm} km",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = "${walk.steps} Pasos • ${walk.durationMinutes} min • Fecha: ${walk.date}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "🔥 ${walk.caloriesBurned} kcal quemadas",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = activityObj.icon, style = MaterialTheme.typography.headlineSmall)
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "${walk.activityName} • ${walk.distanceKm} km",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "${walk.steps} Pasos • ${walk.durationMinutes} min • Fecha: ${walk.date}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "🔥 ${walk.caloriesBurned} kcal quemadas",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            IconButton(
+                                onClick = {
+                                    val speechText = "Sesión de ${walk.activityName} completada por $userName. Recorriste ${walk.distanceKm} kilómetros en ${walk.durationMinutes} minutos, dando ${walk.steps} pasos y quemando ${walk.caloriesBurned} kilocalorías. ¡Excelente logro!"
+                                    tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
+                                }
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Resumen de Actividad")
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.deleteWalkRecord(walk) }
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar Registro", tint = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(
-                            onClick = {
-                                val speechText = "Sesión de ${walk.activityName} completada por $userName. Recorriste ${walk.distanceKm} kilómetros en ${walk.durationMinutes} minutos, dando ${walk.steps} pasos y quemando ${walk.caloriesBurned} kilocalorías. ¡Excelente logro!"
-                                tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
+                    // Map Route Snapshot Thumbnail Image
+                    if (!walk.mapSnapshotPath.isNullOrEmpty()) {
+                        val imgFile = File(walk.mapSnapshotPath)
+                        if (imgFile.exists()) {
+                            val bitmap = BitmapFactory.decodeFile(imgFile.absolutePath)
+                            if (bitmap != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = "Mapa de la Ruta",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(140.dp)
+                                        .clip(MaterialTheme.shapes.medium),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Resumen de Actividad")
-                        }
-
-                        IconButton(
-                            onClick = { viewModel.deleteWalkRecord(walk) }
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Registro", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }

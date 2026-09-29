@@ -3,6 +3,8 @@ package com.example.kalorias.ui.screens
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -37,6 +39,8 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -49,6 +53,7 @@ fun WalkSessionScreen(
     val context = LocalContext.current
     val userName = viewModel.userProfile.name
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var activeMapView by remember { mutableStateOf<MapView?>(null) }
 
     DisposableEffect(Unit) {
         tts = TextToSpeech(context) { status ->
@@ -190,10 +195,12 @@ fun WalkSessionScreen(
                         }
                     }
                     overlays.add(myLocationOverlay)
+                    activeMapView = this
                 }
             },
             modifier = Modifier.fillMaxSize()
         ) { mapView ->
+            activeMapView = mapView
             try {
                 val points = routeGeoPoints.value
                 if (points.isNotEmpty()) {
@@ -326,11 +333,33 @@ fun WalkSessionScreen(
                             isRunning = false
                             val durationMins = (secondsElapsed / 60).coerceAtLeast(1)
                             val roundedDistanceKm = (distanceKm * 100.0).roundToInt() / 100.0
+
+                            // Capture MapView Canvas Snapshot Bitmap
+                            val snapshotPath = activeMapView?.let { mv ->
+                                try {
+                                    if (mv.width > 0 && mv.height > 0) {
+                                        val bitmap = Bitmap.createBitmap(mv.width, mv.height, Bitmap.Config.ARGB_8888)
+                                        val canvas = Canvas(bitmap)
+                                        mv.draw(canvas)
+                                        val file = File(context.cacheDir, "route_snapshot_${System.currentTimeMillis()}.png")
+                                        FileOutputStream(file).use { out ->
+                                            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
+                                        }
+                                        file.absolutePath
+                                    } else {
+                                        null
+                                    }
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+
                             viewModel.addWalkRecord(
                                 distanceKm = roundedDistanceKm,
                                 inputSteps = realSteps,
                                 durationMinutes = durationMins,
-                                activityName = activityType.label
+                                activityName = activityType.label,
+                                mapSnapshotPath = snapshotPath
                             )
                             val finishSpeech = "¡Sesión finalizada $userName! Lograste $realSteps pasos y $caloriesBurned kilocalorías quemadas. Guardado en tu historial."
                             tts?.speak(finishSpeech, TextToSpeech.QUEUE_FLUSH, null, null)

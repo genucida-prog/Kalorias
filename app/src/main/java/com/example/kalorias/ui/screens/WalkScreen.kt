@@ -26,7 +26,10 @@ import com.example.kalorias.ui.theme.NeonPurple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WalkScreen(viewModel: KaloriasViewModel) {
+fun WalkScreen(
+    viewModel: KaloriasViewModel,
+    onNavigateToHistory: () -> Unit = {}
+) {
     var isLiveSessionActive by remember { mutableStateOf(false) }
     var selectedActivity by remember { mutableStateOf(ActivityType.WALK) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
@@ -174,7 +177,7 @@ fun WalkScreen(viewModel: KaloriasViewModel) {
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             TextButton(
-                                onClick = { },
+                                onClick = onNavigateToHistory,
                                 contentPadding = PaddingValues(0.dp)
                             ) {
                                 Text(

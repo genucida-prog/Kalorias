@@ -158,7 +158,7 @@ class KaloriasViewModel : ViewModel() {
         fetchGeminiAdvice()
     }
 
-    fun addWalkRecord(distanceKm: Double, inputSteps: Int, durationMinutes: Int, activityName: String) {
+    fun addWalkRecord(distanceKm: Double, inputSteps: Int, durationMinutes: Int, activityName: String, mapSnapshotPath: String? = null) {
         val activity = ActivityType.entries.find { it.label == activityName } ?: ActivityType.WALK
         val finalSteps = if (activity == ActivityType.TREADMILL || activity == ActivityType.CYCLE) {
             inputSteps
@@ -178,7 +178,8 @@ class KaloriasViewModel : ViewModel() {
                 steps = finalSteps,
                 durationMinutes = durationMinutes,
                 activityName = activity.label,
-                caloriesBurned = burned
+                caloriesBurned = burned,
+                mapSnapshotPath = mapSnapshotPath
             )
         )
         checkAchievements()
