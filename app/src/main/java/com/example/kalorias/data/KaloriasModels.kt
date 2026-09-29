@@ -39,11 +39,11 @@ data class WalkRecord(
 )
 
 data class UserProfile(
-    val name: String = "Carlos",
-    val targetCalories: Int = 2100,
-    val weightKg: Double = 72.5,
-    val heightCm: Int = 178,
-    val goal: String = "Mantener peso y tonificar"
+    val name: String = "",
+    val targetCalories: Int = 2000,
+    val weightKg: Double = 0.0,
+    val heightCm: Int = 0,
+    val goal: String = ""
 )
 
 data class Achievement(

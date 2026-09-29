@@ -24,9 +24,9 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
     val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf(profile.name) }
-    var targetCalories by remember { mutableStateOf(profile.targetCalories.toString()) }
-    var weight by remember { mutableStateOf(profile.weightKg.toString()) }
-    var height by remember { mutableStateOf(profile.heightCm.toString()) }
+    var targetCalories by remember { mutableStateOf(if (profile.targetCalories == 0) "" else profile.targetCalories.toString()) }
+    var weight by remember { mutableStateOf(if (profile.weightKg == 0.0) "" else profile.weightKg.toString()) }
+    var height by remember { mutableStateOf(if (profile.heightCm == 0) "" else profile.heightCm.toString()) }
     var goal by remember { mutableStateOf(profile.goal) }
     var savedMessage by remember { mutableStateOf(false) }
 
@@ -100,6 +100,7 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("Nombre") },
+                        placeholder = { Text("Ej. Carlos") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -107,6 +108,7 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                         value = targetCalories,
                         onValueChange = { targetCalories = it },
                         label = { Text("Meta diaria de calorías (kcal)") },
+                        placeholder = { Text("Ej. 2000") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -118,12 +120,14 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                             value = weight,
                             onValueChange = { weight = it },
                             label = { Text("Peso (kg)") },
+                            placeholder = { Text("Ej. 70.0") },
                             modifier = Modifier.weight(1f)
                         )
                         OutlinedTextField(
                             value = height,
                             onValueChange = { height = it },
                             label = { Text("Altura (cm)") },
+                            placeholder = { Text("Ej. 175") },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -131,15 +135,16 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                     OutlinedTextField(
                         value = goal,
                         onValueChange = { goal = it },
-                        label = { Text("Objetivo (ej. Perder grasa, Ganar músculo)") },
+                        label = { Text("Objetivo") },
+                        placeholder = { Text("Ej. Perder grasa, Ganar músculo") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Button(
                         onClick = {
-                            val cals = targetCalories.toIntOrNull() ?: profile.targetCalories
-                            val wgt = weight.toDoubleOrNull() ?: profile.weightKg
-                            val hgt = height.toIntOrNull() ?: profile.heightCm
+                            val cals = targetCalories.toIntOrNull() ?: 2000
+                            val wgt = weight.toDoubleOrNull() ?: 0.0
+                            val hgt = height.toIntOrNull() ?: 0
                             viewModel.updateProfile(
                                 UserProfile(
                                     name = name,
