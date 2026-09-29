@@ -38,6 +38,7 @@ import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun WalkSessionScreen(
@@ -175,8 +176,19 @@ fun WalkSessionScreen(
                     controller.setZoom(17.0)
                     controller.setCenter(GeoPoint(40.4168, -3.7038))
 
-                    val myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
-                    myLocationOverlay.enableMyLocation()
+                    val myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this).apply {
+                        enableMyLocation()
+                        enableFollowLocation()
+                        runOnFirstFix {
+                            val myLoc = myLocation
+                            if (myLoc != null) {
+                                post {
+                                    controller.animateTo(myLoc)
+                                    controller.setZoom(18.0)
+                                }
+                            }
+                        }
+                    }
                     overlays.add(myLocationOverlay)
                 }
             },
@@ -313,8 +325,9 @@ fun WalkSessionScreen(
                         onClick = {
                             isRunning = false
                             val durationMins = (secondsElapsed / 60).coerceAtLeast(1)
+                            val roundedDistanceKm = (distanceKm * 100.0).roundToInt() / 100.0
                             viewModel.addWalkRecord(
-                                distanceKm = String.format(Locale.getDefault(), "%.2f", distanceKm).toDouble(),
+                                distanceKm = roundedDistanceKm,
                                 inputSteps = realSteps,
                                 durationMinutes = durationMins,
                                 activityName = activityType.label
