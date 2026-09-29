@@ -2,17 +2,26 @@ package com.example.kalorias.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.kalorias.data.UserProfile
 import com.example.kalorias.ui.KaloriasViewModel
+import com.example.kalorias.util.AutoUpdater
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(viewModel: KaloriasViewModel) {
     val profile = viewModel.userProfile
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf(profile.name) }
     var targetCalories by remember { mutableStateOf(profile.targetCalories.toString()) }
@@ -20,6 +29,32 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
     var height by remember { mutableStateOf(profile.heightCm.toString()) }
     var goal by remember { mutableStateOf(profile.goal) }
     var savedMessage by remember { mutableStateOf(false) }
+
+    var updateDialogVersion by remember { mutableStateOf<String?>(null) }
+    var updateDialogUrl by remember { mutableStateOf<String?>(null) }
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var upToDateMessage by remember { mutableStateOf(false) }
+
+    if (updateDialogVersion != null) {
+        AlertDialog(
+            onDismissRequest = { updateDialogVersion = null },
+            title = { Text("🚀 ¡Nueva Versión Disponible!") },
+            text = { Text("Se encontró la versión $updateDialogVersion en GitHub. ¿Deseas descargar e instalar la actualización ahora?") },
+            confirmButton = {
+                Button(onClick = {
+                    AutoUpdater.downloadAndInstallApk(context, updateDialogUrl ?: "", updateDialogVersion ?: "v1.0")
+                    updateDialogVersion = null
+                }) {
+                    Text("Descargar e Instalar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { updateDialogVersion = null }) {
+                    Text("Más Tarde")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -119,6 +154,47 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Guardar Cambios")
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 4.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                checkingUpdates = true
+                                upToDateMessage = false
+                                AutoUpdater.checkForUpdates(context, "v1.0") { tag, url ->
+                                    updateDialogVersion = tag
+                                    updateDialogUrl = url
+                                    checkingUpdates = false
+                                }
+                                delay(1200L)
+                                if (updateDialogVersion == null) {
+                                    checkingUpdates = false
+                                    upToDateMessage = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (checkingUpdates) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Buscando en GitHub...")
+                        } else {
+                            Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Buscar Actualizaciones (GitHub)")
+                        }
+                    }
+
+                    if (upToDateMessage) {
+                        Text(
+                            text = "✅ Tu aplicación está al día (versión v1.0).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
                     }
                 }
             }
