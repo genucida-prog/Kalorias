@@ -177,7 +177,10 @@ fun WalkScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             TextButton(
-                                onClick = onNavigateToHistory,
+                                onClick = {
+                                    feedbackMessage = null
+                                    onNavigateToHistory()
+                                },
                                 contentPadding = PaddingValues(0.dp)
                             ) {
                                 Text(
