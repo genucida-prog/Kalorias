@@ -157,7 +157,10 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
                         onNavigateToWalk = { currentDestination = AppDestinations.WALK }
                     )
                     AppDestinations.NUTRITION -> NutritionScreen(viewModel = viewModel)
-                    AppDestinations.WALK -> WalkScreen(viewModel = viewModel)
+                    AppDestinations.WALK -> WalkScreen(
+                        viewModel = viewModel,
+                        onNavigateToHistory = { currentDestination = AppDestinations.HISTORY }
+                    )
                     AppDestinations.HISTORY -> HistoryScreen(viewModel = viewModel)
                     AppDestinations.CHALLENGES -> ChallengesScreen(viewModel = viewModel)
                     AppDestinations.PROFILE -> ProfileScreen(viewModel = viewModel)
