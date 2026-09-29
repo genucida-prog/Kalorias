@@ -6,8 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,7 @@ import java.util.Locale
 fun HistoryScreen(viewModel: KaloriasViewModel) {
     val context = LocalContext.current
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         tts = TextToSpeech(context) { status ->
@@ -42,6 +44,30 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
     val totalDistance = viewModel.totalDistanceKm
     val totalBurned = viewModel.totalCaloriesBurned
 
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("⚠️ ¿Borrar Todo el Historial?") },
+            text = { Text("Se eliminarán permanentemente todas tus sesiones guardadas, kilómetros acumulados y calorías quemadas.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearWalkRecords()
+                        showClearConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Borrar Historial")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -54,7 +80,7 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "📜 Historial de Rutas & Resultados",
                         style = MaterialTheme.typography.headlineMedium,
@@ -67,14 +93,25 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
                     )
                 }
 
-                IconButton(
-                    onClick = {
-                        val speechText = "Hola $userName. En tu historial tienes un total de ${walkRecords.size} actividades guardadas, acumulando ${String.format(Locale.getDefault(), "%.1f", totalDistance)} kilómetros y ${totalBurned} kilocalorías quemadas. ¡Excelente trabajo!"
-                        tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
-                    },
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Historial con Voz")
+                Row {
+                    IconButton(
+                        onClick = {
+                            val speechText = "Hola $userName. En tu historial tienes un total de ${walkRecords.size} actividades guardadas, acumulando ${String.format(Locale.getDefault(), "%.1f", totalDistance)} kilómetros y ${totalBurned} kilocalorías quemadas. ¡Excelente trabajo!"
+                            tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Historial con Voz")
+                    }
+
+                    if (walkRecords.isNotEmpty()) {
+                        IconButton(
+                            onClick = { showClearConfirmDialog = true },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        ) {
+                            Icon(Icons.Default.DeleteForever, contentDescription = "Borrar Todo el Historial", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }
@@ -124,14 +161,52 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
             }
         }
 
-        // List of Saved Sessions
+        // List Header & Clear Button
         item {
-            Text(
-                text = "Sesiones Registradas",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sesiones Registradas",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (walkRecords.isNotEmpty()) {
+                    TextButton(onClick = { showClearConfirmDialog = true }) {
+                        Text("Borrar Historial", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (walkRecords.isEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = "🏃‍♂️", style = MaterialTheme.typography.headlineLarge)
+                        Text(
+                            text = "No hay sesiones guardadas en el historial",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Comienza una sesión de Caminata, Correr, Ciclismo o Senderismo desde la pestaña Actividad.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
 
         items(walkRecords) { walk ->
@@ -172,13 +247,21 @@ fun HistoryScreen(viewModel: KaloriasViewModel) {
                         }
                     }
 
-                    IconButton(
-                        onClick = {
-                            val speechText = "Sesión de ${walk.activityName} completada por $userName. Recorriste ${walk.distanceKm} kilómetros en ${walk.durationMinutes} minutos, dando ${walk.steps} pasos y quemando ${walk.caloriesBurned} kilocalorías. ¡Excelente logro!"
-                            tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(
+                            onClick = {
+                                val speechText = "Sesión de ${walk.activityName} completada por $userName. Recorriste ${walk.distanceKm} kilómetros en ${walk.durationMinutes} minutos, dando ${walk.steps} pasos y quemando ${walk.caloriesBurned} kilocalorías. ¡Excelente logro!"
+                                tts?.speak(speechText, TextToSpeech.QUEUE_FLUSH, null, null)
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Resumen de Actividad")
                         }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Escuchar Resumen de Actividad")
+
+                        IconButton(
+                            onClick = { viewModel.deleteWalkRecord(walk) }
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar Registro", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }

@@ -185,6 +185,14 @@ class KaloriasViewModel : ViewModel() {
         fetchGeminiAdvice()
     }
 
+    fun clearWalkRecords() {
+        _walkRecords.clear()
+    }
+
+    fun deleteWalkRecord(record: WalkRecord) {
+        _walkRecords.remove(record)
+    }
+
     fun addWaterGlass() {
         if (waterGlasses < 12) {
             waterGlasses++
