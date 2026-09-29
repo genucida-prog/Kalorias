@@ -8,10 +8,12 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.speech.tts.TextToSpeech
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -44,6 +46,28 @@ fun WalkSessionScreen(
     onFinishSession: () -> Unit
 ) {
     val context = LocalContext.current
+    val userName = viewModel.userProfile.name
+    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+
+    DisposableEffect(Unit) {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.forLanguageTag("es-ES")
+                val startSpeech = when (activityType) {
+                    ActivityType.RUN -> "¡Vamos $userName! Iniciando sesión de carrera. ¡A mantener un gran ritmo!"
+                    ActivityType.WALK -> "¡Bienvenido $userName! Iniciando caminata en vivo. ¡A sumar pasos y salud!"
+                    ActivityType.HIKE -> "¡A conquistar la ruta $userName! Sesión de senderismo iniciada."
+                    ActivityType.CYCLE -> "¡A todo pedal $userName! Sesión de ciclismo activa."
+                    ActivityType.TREADMILL -> "¡A darlo todo en la cinta $userName! Sesión iniciada."
+                }
+                tts?.speak(startSpeech, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
+        onDispose {
+            tts?.stop()
+            tts?.shutdown()
+        }
+    }
 
     val osmHotTileSource = remember {
         XYTileSource(
@@ -198,12 +222,27 @@ fun WalkSessionScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "${activityType.icon} OPENSTREETMAP: ${activityType.label.uppercase()}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${activityType.icon} OPENSTREETMAP: ${activityType.label.uppercase()}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        IconButton(
+                            onClick = {
+                                val currentVoiceMsg = "¡Sigue así $userName! Llevas $realSteps pasos en tu sesión de ${activityType.label}, acumulando $caloriesBurned kilocalorías quemadas."
+                                tts?.speak(currentVoiceMsg, TextToSpeech.QUEUE_FLUSH, null, null)
+                            }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Ánimo por voz")
+                        }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -280,6 +319,8 @@ fun WalkSessionScreen(
                                 durationMinutes = durationMins,
                                 activityName = activityType.label
                             )
+                            val finishSpeech = "¡Sesión finalizada $userName! Lograste $realSteps pasos y $caloriesBurned kilocalorías quemadas. Guardado en tu historial."
+                            tts?.speak(finishSpeech, TextToSpeech.QUEUE_FLUSH, null, null)
                             onFinishSession()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),

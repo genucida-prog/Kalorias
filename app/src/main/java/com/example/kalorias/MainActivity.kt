@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kalorias.ui.KaloriasViewModel
 import com.example.kalorias.ui.screens.ChallengesScreen
+import com.example.kalorias.ui.screens.HistoryScreen
 import com.example.kalorias.ui.screens.HomeScreen
 import com.example.kalorias.ui.screens.NutritionScreen
 import com.example.kalorias.ui.screens.ProfileScreen
@@ -125,7 +126,8 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
                     val bottomNavItems = listOf(
                         AppDestinations.DASHBOARD to "Dashboard",
                         AppDestinations.WALK to "Actividad",
-                        AppDestinations.NUTRITION to "Nutrición"
+                        AppDestinations.NUTRITION to "Nutrición",
+                        AppDestinations.HISTORY to "Historial"
                     )
                     bottomNavItems.forEach { (destination, shortLabel) ->
                         NavigationBarItem(
@@ -156,6 +158,7 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
                     )
                     AppDestinations.NUTRITION -> NutritionScreen(viewModel = viewModel)
                     AppDestinations.WALK -> WalkScreen(viewModel = viewModel)
+                    AppDestinations.HISTORY -> HistoryScreen(viewModel = viewModel)
                     AppDestinations.CHALLENGES -> ChallengesScreen(viewModel = viewModel)
                     AppDestinations.PROFILE -> ProfileScreen(viewModel = viewModel)
                 }
@@ -171,6 +174,7 @@ enum class AppDestinations(
     DASHBOARD("Resumen & Dashboard", Icons.Default.Home),
     NUTRITION("Menú & Nutrición", Icons.Default.Restaurant),
     WALK("Caminatas & Actividad", Icons.AutoMirrored.Filled.DirectionsWalk),
+    HISTORY("Historial & Rutas", Icons.Default.History),
     CHALLENGES("Retos & Logros", Icons.Default.EmojiEvents),
     PROFILE("Perfil & Metas", Icons.Default.Person),
 }
