@@ -46,7 +46,8 @@ fun WalkSessionScreen(
     val context = LocalContext.current
 
     DisposableEffect(Unit) {
-        Configuration.getInstance().userAgentValue = "com.example.kalorias"
+        Configuration.getInstance().userAgentValue = context.packageName
+        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
         onDispose { }
     }
 
@@ -132,7 +133,7 @@ fun WalkSessionScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                Configuration.getInstance().userAgentValue = "com.example.kalorias"
+                Configuration.getInstance().userAgentValue = ctx.packageName
                 MapView(ctx).apply {
                     setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
