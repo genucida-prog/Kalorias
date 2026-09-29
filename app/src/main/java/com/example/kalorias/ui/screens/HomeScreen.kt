@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.kalorias.ui.KaloriasViewModel
 import com.example.kalorias.ui.theme.NeonCyan
@@ -56,12 +57,16 @@ fun HomeScreen(
                         text = "🎯 Kalorias OS",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "Bienvenido, ${profile.name} • Meta: ${profile.goal}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -102,23 +107,33 @@ fun HomeScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceAround
                     ) {
-                        Column {
-                            Text(text = "Consumidas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(text = "$consumed kcal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = "Consumidas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            Text(text = "$consumed kcal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
-                        Column {
-                            Text(text = "Meta", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(text = "$target kcal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = "Meta", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            Text(text = "$target kcal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                         }
-                        Column {
-                            Text(text = "Restantes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = "Restantes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             Text(
                                 text = "$remaining kcal",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = if (remaining < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                color = if (remaining < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                maxLines = 1
                             )
                         }
                     }
@@ -134,9 +149,9 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
-                        Text(text = "🥩 Prot: ${viewModel.totalProtein}g", style = MaterialTheme.typography.bodyMedium)
-                        Text(text = "🍞 Carbs: ${viewModel.totalCarbs}g", style = MaterialTheme.typography.bodyMedium)
-                        Text(text = "🥑 Grasas: ${viewModel.totalFat}g", style = MaterialTheme.typography.bodyMedium)
+                        Text(text = "🥩 Prot: ${viewModel.totalProtein}g", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(text = "🍞 Carbs: ${viewModel.totalCarbs}g", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(text = "🥑 Grasas: ${viewModel.totalFat}g", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                 }
             }
@@ -208,7 +223,7 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.Restaurant, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Ir al Menú")
+                    Text("Ir al Menú", maxLines = 1)
                 }
                 Button(
                     onClick = onNavigateToWalk,
@@ -217,7 +232,7 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Default.DirectionsWalk, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Actividad")
+                    Text("Actividad", maxLines = 1)
                 }
             }
         }
