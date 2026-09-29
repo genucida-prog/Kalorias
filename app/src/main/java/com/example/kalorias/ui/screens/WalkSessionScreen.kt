@@ -28,7 +28,7 @@ import com.example.kalorias.data.ActivityType
 import com.example.kalorias.ui.KaloriasViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -45,8 +45,19 @@ fun WalkSessionScreen(
 ) {
     val context = LocalContext.current
 
+    val osmHotTileSource = remember {
+        XYTileSource(
+            "OSM_HOT",
+            0, 19, 256, ".png",
+            arrayOf(
+                "https://a.tile.openstreetmap.fr/hot/",
+                "https://b.tile.openstreetmap.fr/hot/"
+            )
+        )
+    }
+
     DisposableEffect(Unit) {
-        Configuration.getInstance().userAgentValue = context.packageName
+        Configuration.getInstance().userAgentValue = "Mozilla/5.0 (Android 14; Mobile; KaloriasFitnessApp/1.0)"
         Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
         onDispose { }
     }
@@ -133,9 +144,9 @@ fun WalkSessionScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                Configuration.getInstance().userAgentValue = ctx.packageName
+                Configuration.getInstance().userAgentValue = "Mozilla/5.0 (Android 14; Mobile; KaloriasFitnessApp/1.0)"
                 MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
+                    setTileSource(osmHotTileSource)
                     setMultiTouchControls(true)
                     controller.setZoom(17.0)
                     controller.setCenter(GeoPoint(40.4168, -3.7038))
