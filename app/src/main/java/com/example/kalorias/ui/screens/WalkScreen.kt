@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kalorias.data.ActivityType
@@ -41,9 +42,8 @@ fun WalkScreen(viewModel: KaloriasViewModel) {
         )
     } else {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header Description
@@ -79,7 +79,7 @@ fun WalkScreen(viewModel: KaloriasViewModel) {
                             val isSelected = selectedActivity == activity
                             Card(
                                 modifier = Modifier
-                                    .width(110.dp)
+                                    .widthIn(min = 100.dp, max = 130.dp)
                                     .clickable { selectedActivity = activity },
                                 border = if (isSelected) BorderStroke(2.dp, NeonPurple) else null,
                                 colors = CardDefaults.cardColors(
@@ -90,16 +90,18 @@ fun WalkScreen(viewModel: KaloriasViewModel) {
                                 )
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.padding(12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(text = activity.icon, fontSize = 28.sp)
+                                    Text(text = activity.icon, fontSize = 26.sp)
                                     Text(
                                         text = activity.label,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -144,7 +146,9 @@ fun WalkScreen(viewModel: KaloriasViewModel) {
                             Text(
                                 text = "Comenzar Sesión ${selectedActivity.label}",
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
