@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
@@ -26,6 +27,7 @@ import com.example.kalorias.ui.screens.NutritionScreen
 import com.example.kalorias.ui.screens.ProfileScreen
 import com.example.kalorias.ui.screens.WalkScreen
 import com.example.kalorias.ui.theme.KaloriasTheme
+import com.example.kalorias.util.AutoUpdater
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -47,6 +49,39 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.DASHBOARD) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    var autoUpdateVersion by remember { mutableStateOf<String?>(null) }
+    var autoUpdateUrl by remember { mutableStateOf<String?>(null) }
+
+    // Automatically check for updates on app launch
+    LaunchedEffect(Unit) {
+        AutoUpdater.checkForUpdates(context, "v1.0") { tag, url ->
+            autoUpdateVersion = tag
+            autoUpdateUrl = url
+        }
+    }
+
+    if (autoUpdateVersion != null) {
+        AlertDialog(
+            onDismissRequest = { autoUpdateVersion = null },
+            title = { Text("🚀 ¡Nueva Actualización Disponible!") },
+            text = { Text("Se ha detectado la versión $autoUpdateVersion de Kalorias en GitHub. ¿Deseas descargar e instalar la actualización ahora?") },
+            confirmButton = {
+                Button(onClick = {
+                    AutoUpdater.downloadAndInstallApk(context, autoUpdateUrl ?: "", autoUpdateVersion ?: "v1.0")
+                    autoUpdateVersion = null
+                }) {
+                    Text("Actualizar Ahora")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { autoUpdateVersion = null }) {
+                    Text("Más Tarde")
+                }
+            }
+        )
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
