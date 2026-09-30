@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
@@ -62,7 +61,7 @@ fun HomeScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Bienvenido, ${profile.name} • Meta: ${profile.goal}",
+                        text = if (profile.name.isNotEmpty()) "Bienvenido, ${profile.name} • Meta: ${profile.goal}" else "Bienvenido • Configura tu perfil",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -157,32 +156,22 @@ fun HomeScreen(
             }
         }
 
-        // Hydration & Steps Row Cards
+        // Steps Card (Full Width)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.LocalDrink, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text(text = "Agua", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "${viewModel.waterGlasses} / 8 Vasos", style = MaterialTheme.typography.bodyMedium)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(text = "Pasos Registrados Hoy", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(text = "$steps pasos", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
-                }
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                        Text(text = "Pasos Hoy", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "$steps pasos", style = MaterialTheme.typography.bodyMedium)
-                    }
+                    Icon(Icons.Default.DirectionsWalk, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(40.dp))
                 }
             }
         }

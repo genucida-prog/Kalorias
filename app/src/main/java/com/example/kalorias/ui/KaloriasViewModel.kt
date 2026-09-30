@@ -31,9 +31,6 @@ class KaloriasViewModel : ViewModel() {
     var userProfile by mutableStateOf(UserProfile())
         private set
 
-    var waterGlasses by mutableIntStateOf(5)
-        private set
-
     var smartAdvice by mutableStateOf("🤖 Analizando desgaste calórico y optimizando tu plan...")
         private set
 
@@ -125,7 +122,6 @@ class KaloriasViewModel : ViewModel() {
                     - Calorías consumidas: $totalCaloriesConsumed kcal
                     - Calorías quemadas en ejercicio: $totalCaloriesBurned kcal
                     - Déficit calórico: $calorieDeficit kcal
-                    - Hidratación: $waterGlasses vasos
                     Dame un consejo motivador de 2 frases adaptado al momento del día.
                 """.trimIndent()
 
@@ -192,13 +188,6 @@ class KaloriasViewModel : ViewModel() {
 
     fun deleteWalkRecord(record: WalkRecord) {
         _walkRecords.remove(record)
-    }
-
-    fun addWaterGlass() {
-        if (waterGlasses < 12) {
-            waterGlasses++
-            fetchGeminiAdvice()
-        }
     }
 
     fun updateProfile(newProfile: UserProfile) {
