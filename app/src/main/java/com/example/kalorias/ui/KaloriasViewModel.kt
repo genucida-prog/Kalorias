@@ -12,12 +12,15 @@ import com.example.kalorias.data.MealType
 import com.example.kalorias.data.UserProfile
 import com.example.kalorias.data.WalkRecord
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalTime
 
 class KaloriasViewModel(application: Application) : AndroidViewModel(application) {
 
     private val profilePreferences = application.getSharedPreferences("user_profile", 0)
+    private val walkPreferences = application.getSharedPreferences("walk_history", 0)
 
     // --- State properties declared first ---
     private val _foodItems = mutableStateListOf(
@@ -26,9 +29,13 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
     )
     val foodItems: List<FoodItem> get() = _foodItems
 
-    private val _walkRecords = mutableStateListOf(
-        WalkRecord(date = LocalDate.now().toString(), distanceKm = 5.0, steps = 6800, durationMinutes = 50, activityName = "Correr", caloriesBurned = 425)
-    )
+    private val _walkRecords = mutableStateListOf<WalkRecord>().apply {
+        addAll(
+            loadWalkRecords() ?: listOf(
+                WalkRecord(date = LocalDate.now().toString(), distanceKm = 5.0, steps = 6800, durationMinutes = 50, activityName = "Correr", caloriesBurned = 425)
+            )
+        )
+    }
     val walkRecords: List<WalkRecord> get() = _walkRecords
 
     var userProfile by mutableStateOf(loadUserProfile())
@@ -181,16 +188,20 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
                 mapSnapshotPath = mapSnapshotPath
             )
         )
+        saveWalkRecords()
         checkAchievements()
         fetchGeminiAdvice()
     }
 
     fun clearWalkRecords() {
         _walkRecords.clear()
+        saveWalkRecords()
     }
 
     fun deleteWalkRecord(record: WalkRecord) {
-        _walkRecords.remove(record)
+        if (_walkRecords.remove(record)) {
+            saveWalkRecords()
+        }
     }
 
     fun updateProfile(newProfile: UserProfile) {
@@ -212,6 +223,47 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
         heightCm = profilePreferences.getInt("heightCm", 0),
         goal = profilePreferences.getString("goal", "") ?: ""
     )
+
+    private fun loadWalkRecords(): List<WalkRecord>? {
+        if (!walkPreferences.contains("records")) return null
+
+        return try {
+            val recordsJson = JSONArray(walkPreferences.getString("records", "[]"))
+            List(recordsJson.length()) { index ->
+                val record = recordsJson.getJSONObject(index)
+                WalkRecord(
+                    id = record.getString("id"),
+                    date = record.getString("date"),
+                    distanceKm = record.getDouble("distanceKm"),
+                    steps = record.getInt("steps"),
+                    durationMinutes = record.getInt("durationMinutes"),
+                    activityName = record.getString("activityName"),
+                    caloriesBurned = record.getInt("caloriesBurned"),
+                    mapSnapshotPath = record.optString("mapSnapshotPath").takeIf { it.isNotEmpty() }
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveWalkRecords() {
+        val recordsJson = JSONArray()
+        _walkRecords.forEach { record ->
+            recordsJson.put(
+                JSONObject()
+                    .put("id", record.id)
+                    .put("date", record.date)
+                    .put("distanceKm", record.distanceKm)
+                    .put("steps", record.steps)
+                    .put("durationMinutes", record.durationMinutes)
+                    .put("activityName", record.activityName)
+                    .put("caloriesBurned", record.caloriesBurned)
+                    .put("mapSnapshotPath", record.mapSnapshotPath)
+            )
+        }
+        walkPreferences.edit().putString("records", recordsJson.toString()).apply()
+    }
 
     private fun checkAchievements() {
         if (_foodItems.size >= 3) {
