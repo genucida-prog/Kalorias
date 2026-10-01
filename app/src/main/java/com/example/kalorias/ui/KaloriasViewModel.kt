@@ -9,6 +9,7 @@ import com.example.kalorias.data.Achievement
 import com.example.kalorias.data.ActivityType
 import com.example.kalorias.data.FoodItem
 import com.example.kalorias.data.MealType
+import com.example.kalorias.data.RoutePoint
 import com.example.kalorias.data.UserProfile
 import com.example.kalorias.data.WalkRecord
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
 
     private val profilePreferences = application.getSharedPreferences("user_profile", 0)
     private val walkPreferences = application.getSharedPreferences("walk_history", 0)
+    private val nutritionPreferences = application.getSharedPreferences("nutrition_data", 0)
 
     // --- State properties declared first ---
     private val _foodItems = mutableStateListOf(
@@ -113,6 +115,15 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
 
     // --- init block placed at the bottom after all properties are initialized ---
     init {
+        loadFoodItems()?.let { savedItems ->
+            _foodItems.clear()
+            _foodItems.addAll(savedItems)
+        }
+        loadWeeklyMealPlan()?.let { weeklyMealPlan = it }
+        loadAchievements()?.let { savedAchievements ->
+            achievements.clear()
+            achievements.addAll(savedAchievements)
+        }
         fetchGeminiAdvice()
     }
 
@@ -154,17 +165,26 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
                 "Sábado (Descanso Activo): Desayuno (Bowl de frutas y proteína 330kcal) • Almuerzo (Lubina al horno con patata 520kcal) • Cena (Brochetas de pollo 410kcal)",
                 "Domingo (Planificación): Desayuno (Tortilla de claras y espinacas 310kcal) • Almuerzo (Lentejas fit con verduras 530kcal) • Cena (Sopa juliana y pavo 320kcal)"
             )
+            saveWeeklyMealPlan()
             smartAdvice = "✨ ¡Menú semanal regenerado por IA basándose en tu desgaste calórico de ${totalCaloriesBurned} kcal!"
         }
     }
 
     fun addFoodItem(name: String, calories: Int, protein: Int, carbs: Int, fat: Int, mealType: MealType) {
         _foodItems.add(FoodItem(name = name, calories = calories, protein = protein, carbs = carbs, fat = fat, mealType = mealType))
+        saveFoodItems()
         checkAchievements()
         fetchGeminiAdvice()
     }
 
-    fun addWalkRecord(distanceKm: Double, inputSteps: Int, durationMinutes: Int, activityName: String, mapSnapshotPath: String? = null) {
+    fun addWalkRecord(
+        distanceKm: Double,
+        inputSteps: Int,
+        durationMinutes: Int,
+        activityName: String,
+        mapSnapshotPath: String? = null,
+        routePoints: List<RoutePoint> = emptyList()
+    ) {
         val activity = ActivityType.entries.find { it.label == activityName } ?: ActivityType.WALK
         val finalSteps = if (activity == ActivityType.TREADMILL || activity == ActivityType.CYCLE) {
             inputSteps
@@ -185,7 +205,8 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
                 durationMinutes = durationMinutes,
                 activityName = activity.label,
                 caloriesBurned = burned,
-                mapSnapshotPath = mapSnapshotPath
+                mapSnapshotPath = mapSnapshotPath,
+                routePoints = routePoints
             )
         )
         saveWalkRecords()
@@ -239,7 +260,14 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
                     durationMinutes = record.getInt("durationMinutes"),
                     activityName = record.getString("activityName"),
                     caloriesBurned = record.getInt("caloriesBurned"),
-                    mapSnapshotPath = record.optString("mapSnapshotPath").takeIf { it.isNotEmpty() }
+                    mapSnapshotPath = record.optString("mapSnapshotPath").takeIf { it.isNotEmpty() },
+                    routePoints = record.optJSONArray("routePoints")?.let { routeJson ->
+                        List(routeJson.length()) { pointIndex ->
+                            routeJson.getJSONObject(pointIndex).let { point ->
+                                RoutePoint(point.getDouble("latitude"), point.getDouble("longitude"))
+                            }
+                        }
+                    } ?: emptyList()
                 )
             }
         } catch (_: Exception) {
@@ -260,9 +288,102 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
                     .put("activityName", record.activityName)
                     .put("caloriesBurned", record.caloriesBurned)
                     .put("mapSnapshotPath", record.mapSnapshotPath)
+                    .put("routePoints", JSONArray().apply {
+                        record.routePoints.forEach { point ->
+                            put(JSONObject().put("latitude", point.latitude).put("longitude", point.longitude))
+                        }
+                    })
             )
         }
         walkPreferences.edit().putString("records", recordsJson.toString()).apply()
+    }
+
+    private fun loadFoodItems(): List<FoodItem>? {
+        if (!nutritionPreferences.contains("foodItems")) return null
+        return try {
+            val itemsJson = JSONArray(nutritionPreferences.getString("foodItems", "[]"))
+            List(itemsJson.length()) { index ->
+                itemsJson.getJSONObject(index).let { item ->
+                    FoodItem(
+                        id = item.getString("id"),
+                        name = item.getString("name"),
+                        calories = item.getInt("calories"),
+                        protein = item.getInt("protein"),
+                        carbs = item.getInt("carbs"),
+                        fat = item.getInt("fat"),
+                        mealType = MealType.valueOf(item.getString("mealType"))
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveFoodItems() {
+        val itemsJson = JSONArray()
+        _foodItems.forEach { item ->
+            itemsJson.put(
+                JSONObject()
+                    .put("id", item.id)
+                    .put("name", item.name)
+                    .put("calories", item.calories)
+                    .put("protein", item.protein)
+                    .put("carbs", item.carbs)
+                    .put("fat", item.fat)
+                    .put("mealType", item.mealType.name)
+            )
+        }
+        nutritionPreferences.edit().putString("foodItems", itemsJson.toString()).apply()
+    }
+
+    private fun loadWeeklyMealPlan(): List<String>? {
+        if (!nutritionPreferences.contains("weeklyMealPlan")) return null
+        return try {
+            val planJson = JSONArray(nutritionPreferences.getString("weeklyMealPlan", "[]"))
+            List(planJson.length()) { index -> planJson.getString(index) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveWeeklyMealPlan() {
+        val planJson = JSONArray()
+        weeklyMealPlan.forEach(planJson::put)
+        nutritionPreferences.edit().putString("weeklyMealPlan", planJson.toString()).apply()
+    }
+
+    private fun loadAchievements(): List<Achievement>? {
+        if (!nutritionPreferences.contains("achievements")) return null
+        return try {
+            val achievementsJson = JSONArray(nutritionPreferences.getString("achievements", "[]"))
+            List(achievementsJson.length()) { index ->
+                achievementsJson.getJSONObject(index).let { achievement ->
+                    Achievement(
+                        id = achievement.getString("id"),
+                        title = achievement.getString("title"),
+                        description = achievement.getString("description"),
+                        unlocked = achievement.getBoolean("unlocked")
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveAchievements() {
+        val achievementsJson = JSONArray()
+        achievements.forEach { achievement ->
+            achievementsJson.put(
+                JSONObject()
+                    .put("id", achievement.id)
+                    .put("title", achievement.title)
+                    .put("description", achievement.description)
+                    .put("unlocked", achievement.unlocked)
+            )
+        }
+        nutritionPreferences.edit().putString("achievements", achievementsJson.toString()).apply()
     }
 
     private fun checkAchievements() {
@@ -278,6 +399,7 @@ class KaloriasViewModel(application: Application) : AndroidViewModel(application
         val index = achievements.indexOfFirst { it.id == id }
         if (index != -1 && !achievements[index].unlocked) {
             achievements[index] = achievements[index].copy(unlocked = true)
+            saveAchievements()
         }
     }
 }

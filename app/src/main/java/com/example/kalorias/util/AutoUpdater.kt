@@ -22,11 +22,11 @@ object AutoUpdater {
                 val json = JSONObject(response)
                 val latestTag = json.getString("tag_name") // e.g. "v1.1"
                 val assets = json.optJSONArray("assets")
-                val apkUrl = if (assets != null && assets.length() > 0) {
-                    assets.getJSONObject(0).getString("browser_download_url")
-                } else {
-                    json.getString("html_url")
-                }
+                val apkUrl = (0 until (assets?.length() ?: 0))
+                    .map { assets!!.getJSONObject(it) }
+                    .firstOrNull { it.optString("name").endsWith(".apk", ignoreCase = true) }
+                    ?.getString("browser_download_url")
+                    ?: json.getString("html_url")
 
                 if (latestTag != currentVersion && latestTag.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
@@ -44,13 +44,14 @@ object AutoUpdater {
                 setDescription("Descargando nueva versión desde GitHub...")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Kalorias-$versionName.apk")
+                setMimeType("application/vnd.android.package-archive")
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
             }
 
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             downloadManager.enqueue(request)
-            Toast.makeText(context, "Descargando actualización en Descargas...", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Descargando actualización. Toca la notificación al terminar para instalarla.", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Toast.makeText(context, "Error al iniciar descarga: ${e.message}", Toast.LENGTH_LONG).show()
         }

@@ -35,7 +35,13 @@ data class WalkRecord(
     val durationMinutes: Int,
     val activityName: String = "Caminata",
     val caloriesBurned: Int = (distanceKm * 65).toInt(),
-    val mapSnapshotPath: String? = null
+    val mapSnapshotPath: String? = null,
+    val routePoints: List<RoutePoint> = emptyList()
+)
+
+data class RoutePoint(
+    val latitude: Double,
+    val longitude: Double
 )
 
 data class UserProfile(

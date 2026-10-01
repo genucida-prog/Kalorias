@@ -122,8 +122,8 @@ fun WalkSessionScreen(
         }
     }
 
-    LaunchedEffect(hasActivityRecognitionPermission) {
-        if (hasActivityRecognitionPermission) {
+    LaunchedEffect(hasActivityRecognitionPermission, hasLocationPermission) {
+        if (hasActivityRecognitionPermission || hasLocationPermission) {
             startForegroundService(
                 context,
                 Intent(context, WorkoutTrackingService::class.java).setAction(WorkoutTrackingService.ACTION_START)
@@ -139,16 +139,19 @@ fun WalkSessionScreen(
     val userHeight = viewModel.userProfile.heightCm
     val stepLengthMeters = userHeight * 0.00415
 
-    val distanceKm = remember(realSteps) {
-        (realSteps * stepLengthMeters) / 1000.0
+    val gpsDistanceKm = remember(sessionState.routePoints) {
+        sessionState.routePoints.zipWithNext().sumOf { (start, end) ->
+            distanceBetweenKm(start.latitude, start.longitude, end.latitude, end.longitude)
+        }
     }
+    val distanceKm = if (gpsDistanceKm > 0.0) gpsDistanceKm else (realSteps * stepLengthMeters) / 1000.0
 
     val caloriesBurned = remember(distanceKm) {
         (distanceKm * activityType.calorieMultiplier).toInt()
     }
 
-    val routeGeoPoints = remember {
-        mutableStateOf(mutableListOf(GeoPoint(40.4168, -3.7038)))
+    val routeGeoPoints = remember(sessionState.routePoints) {
+        sessionState.routePoints.map { GeoPoint(it.latitude, it.longitude) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -159,7 +162,7 @@ fun WalkSessionScreen(
                     setTileSource(osmHotTileSource)
                     setMultiTouchControls(true)
                     controller.setZoom(17.0)
-                    controller.setCenter(GeoPoint(40.4168, -3.7038))
+                    controller.setCenter(routeGeoPoints.lastOrNull() ?: GeoPoint(40.4168, -3.7038))
 
                     val myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this).apply {
                         enableMyLocation()
@@ -182,7 +185,7 @@ fun WalkSessionScreen(
         ) { mapView ->
             activeMapView = mapView
             try {
-                val points = routeGeoPoints.value
+                val points = routeGeoPoints
                 if (points.isNotEmpty()) {
                     mapView.overlays.removeAll { it is Polyline || (it is Marker && it !is MyLocationNewOverlay) }
                     val polyline = Polyline().apply {
@@ -343,7 +346,8 @@ fun WalkSessionScreen(
                                 inputSteps = realSteps,
                                 durationMinutes = durationMins,
                                 activityName = activityType.label,
-                                mapSnapshotPath = snapshotPath
+                                mapSnapshotPath = snapshotPath,
+                                routePoints = sessionState.routePoints
                             )
                             WorkoutTrackingService.command(context, WorkoutTrackingService.ACTION_STOP)
                             val finishSpeech = "¡Sesión finalizada $userName! Lograste $realSteps pasos y $caloriesBurned kilocalorías quemadas. Guardado en tu historial."
@@ -361,4 +365,16 @@ fun WalkSessionScreen(
             }
         }
     }
+}
+
+private fun distanceBetweenKm(startLatitude: Double, startLongitude: Double, endLatitude: Double, endLongitude: Double): Double {
+    val earthRadiusKm = 6371.0
+    val latitudeDelta = Math.toRadians(endLatitude - startLatitude)
+    val longitudeDelta = Math.toRadians(endLongitude - startLongitude)
+    val startLatitudeRadians = Math.toRadians(startLatitude)
+    val endLatitudeRadians = Math.toRadians(endLatitude)
+    val haversine = kotlin.math.sin(latitudeDelta / 2) * kotlin.math.sin(latitudeDelta / 2) +
+            kotlin.math.cos(startLatitudeRadians) * kotlin.math.cos(endLatitudeRadians) *
+            kotlin.math.sin(longitudeDelta / 2) * kotlin.math.sin(longitudeDelta / 2)
+    return 2 * earthRadiusKm * kotlin.math.asin(kotlin.math.sqrt(haversine.coerceIn(0.0, 1.0)))
 }
