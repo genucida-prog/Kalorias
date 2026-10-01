@@ -56,7 +56,7 @@ fun KaloriasApp(viewModel: KaloriasViewModel = viewModel()) {
 
     // Automatically check for updates on app launch
     LaunchedEffect(Unit) {
-        AutoUpdater.checkForUpdates(context, "v1.0") { tag, url ->
+        AutoUpdater.checkForUpdates(context) { tag, url ->
             autoUpdateVersion = tag
             autoUpdateUrl = url
         }

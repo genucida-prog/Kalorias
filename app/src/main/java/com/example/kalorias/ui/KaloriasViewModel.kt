@@ -1,7 +1,8 @@
 package com.example.kalorias.ui
 
 import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.ai.client.generativeai.GenerativeModel
 import com.example.kalorias.data.Achievement
@@ -14,7 +15,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 
-class KaloriasViewModel : ViewModel() {
+class KaloriasViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val profilePreferences = application.getSharedPreferences("user_profile", 0)
 
     // --- State properties declared first ---
     private val _foodItems = mutableStateListOf(
@@ -28,7 +31,7 @@ class KaloriasViewModel : ViewModel() {
     )
     val walkRecords: List<WalkRecord> get() = _walkRecords
 
-    var userProfile by mutableStateOf(UserProfile())
+    var userProfile by mutableStateOf(loadUserProfile())
         private set
 
     var smartAdvice by mutableStateOf("🤖 Analizando desgaste calórico y optimizando tu plan...")
@@ -192,8 +195,23 @@ class KaloriasViewModel : ViewModel() {
 
     fun updateProfile(newProfile: UserProfile) {
         userProfile = newProfile
+        profilePreferences.edit()
+            .putString("name", newProfile.name)
+            .putInt("targetCalories", newProfile.targetCalories)
+            .putFloat("weightKg", newProfile.weightKg.toFloat())
+            .putInt("heightCm", newProfile.heightCm)
+            .putString("goal", newProfile.goal)
+            .apply()
         fetchGeminiAdvice()
     }
+
+    private fun loadUserProfile(): UserProfile = UserProfile(
+        name = profilePreferences.getString("name", "") ?: "",
+        targetCalories = profilePreferences.getInt("targetCalories", 2000),
+        weightKg = profilePreferences.getFloat("weightKg", 0f).toDouble(),
+        heightCm = profilePreferences.getInt("heightCm", 0),
+        goal = profilePreferences.getString("goal", "") ?: ""
+    )
 
     private fun checkAchievements() {
         if (_foodItems.size >= 3) {

@@ -2,14 +2,11 @@ package com.example.kalorias.ui.screens
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.speech.tts.TextToSpeech
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,9 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.startForegroundService
 import com.example.kalorias.data.ActivityType
+import com.example.kalorias.service.WorkoutTrackingService
 import com.example.kalorias.ui.KaloriasViewModel
-import kotlinx.coroutines.delay
+import androidx.compose.runtime.collectAsState
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
@@ -97,16 +96,22 @@ fun WalkSessionScreen(
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var hasActivityRecognitionPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        hasActivityRecognitionPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] == true
     }
 
     LaunchedEffect(Unit) {
-        if (!hasLocationPermission) {
+        if (!hasLocationPermission || !hasActivityRecognitionPermission) {
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -117,9 +122,19 @@ fun WalkSessionScreen(
         }
     }
 
-    var isRunning by remember { mutableStateOf(true) }
-    var secondsElapsed by remember { mutableIntStateOf(0) }
-    var realSteps by remember { mutableIntStateOf(0) }
+    LaunchedEffect(hasActivityRecognitionPermission) {
+        if (hasActivityRecognitionPermission) {
+            startForegroundService(
+                context,
+                Intent(context, WorkoutTrackingService::class.java).setAction(WorkoutTrackingService.ACTION_START)
+            )
+        }
+    }
+
+    val sessionState by WorkoutTrackingService.sessionState.collectAsState()
+    val isRunning = sessionState.isRunning
+    val secondsElapsed = sessionState.secondsElapsed
+    val realSteps = sessionState.steps
 
     val userHeight = viewModel.userProfile.heightCm
     val stepLengthMeters = userHeight * 0.00415
@@ -130,41 +145,6 @@ fun WalkSessionScreen(
 
     val caloriesBurned = remember(distanceKm) {
         (distanceKm * activityType.calorieMultiplier).toInt()
-    }
-
-    // Hardware Step Sensor listener
-    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
-    val stepDetector = remember {
-        sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-            ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-    }
-
-    DisposableEffect(isRunning) {
-        if (!isRunning) return@DisposableEffect onDispose {}
-
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent?) {
-                if (event != null && isRunning) {
-                    realSteps++
-                }
-            }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
-
-        if (stepDetector != null) {
-            sensorManager.registerListener(listener, stepDetector, SensorManager.SENSOR_DELAY_FASTEST)
-        }
-
-        onDispose {
-            sensorManager.unregisterListener(listener)
-        }
-    }
-
-    LaunchedEffect(isRunning) {
-        while (isRunning) {
-            delay(1000L)
-            secondsElapsed++
-        }
     }
 
     val routeGeoPoints = remember {
@@ -319,7 +299,12 @@ fun WalkSessionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     FilledTonalIconButton(
-                        onClick = { isRunning = !isRunning },
+                        onClick = {
+                            WorkoutTrackingService.command(
+                                context,
+                                if (isRunning) WorkoutTrackingService.ACTION_PAUSE else WorkoutTrackingService.ACTION_RESUME
+                            )
+                        },
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
@@ -330,7 +315,6 @@ fun WalkSessionScreen(
 
                     Button(
                         onClick = {
-                            isRunning = false
                             val durationMins = (secondsElapsed / 60).coerceAtLeast(1)
                             val roundedDistanceKm = (distanceKm * 100.0).roundToInt() / 100.0
 
@@ -361,6 +345,7 @@ fun WalkSessionScreen(
                                 activityName = activityType.label,
                                 mapSnapshotPath = snapshotPath
                             )
+                            WorkoutTrackingService.command(context, WorkoutTrackingService.ACTION_STOP)
                             val finishSpeech = "¡Sesión finalizada $userName! Lograste $realSteps pasos y $caloriesBurned kilocalorías quemadas. Guardado en tu historial."
                             tts?.speak(finishSpeech, TextToSpeech.QUEUE_FLUSH, null, null)
                             onFinishSession()

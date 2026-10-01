@@ -168,7 +168,7 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
                             scope.launch {
                                 checkingUpdates = true
                                 upToDateMessage = false
-                                AutoUpdater.checkForUpdates(context, "v1.0") { tag, url ->
+                                AutoUpdater.checkForUpdates(context) { tag, url ->
                                     updateDialogVersion = tag
                                     updateDialogUrl = url
                                     checkingUpdates = false
@@ -195,7 +195,7 @@ fun ProfileScreen(viewModel: KaloriasViewModel) {
 
                     if (upToDateMessage) {
                         Text(
-                            text = "✅ Tu aplicación está al día (versión v1.0).",
+                            text = "✅ Tu aplicación está al día (versión ${AutoUpdater.currentVersion}).",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.align(Alignment.CenterHorizontally)

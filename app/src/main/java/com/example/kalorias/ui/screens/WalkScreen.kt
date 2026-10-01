@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +31,7 @@ fun WalkScreen(
     viewModel: KaloriasViewModel,
     onNavigateToHistory: () -> Unit = {}
 ) {
-    var isLiveSessionActive by remember { mutableStateOf(false) }
+    var isLiveSessionActive by rememberSaveable { mutableStateOf(false) }
     var selectedActivity by remember { mutableStateOf(ActivityType.WALK) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
 

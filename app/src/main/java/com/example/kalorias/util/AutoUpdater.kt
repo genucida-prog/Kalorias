@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
+import com.example.kalorias.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -12,8 +13,9 @@ import java.net.URL
 
 object AutoUpdater {
     private const val GITHUB_REPO_API = "https://api.github.com/repos/genucida-prog/Kalorias/releases/latest"
+    val currentVersion: String get() = "v${BuildConfig.VERSION_NAME}"
 
-    suspend fun checkForUpdates(context: Context, currentVersion: String, onUpdateAvailable: (String, String) -> Unit) {
+    suspend fun checkForUpdates(context: Context, onUpdateAvailable: (String, String) -> Unit) {
         withContext(Dispatchers.IO) {
             try {
                 val response = URL(GITHUB_REPO_API).readText()
